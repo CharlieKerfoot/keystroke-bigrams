@@ -1,35 +1,65 @@
-# Experiment: RetroType Bigram Trainer
+# TypeSlow
 
-## Hypothesis
+A typing analytics and training app with detailed performance breakdowns, adaptive practice drills, and session history.
 
-Keystroke-level timing analysis can identify a user's slowest bigram transitions, and practice text that oversamples those bigrams (with hidden real-time metrics) will produce measurably faster typing on those specific bigrams within a single session.
+## Features
 
-## What This Tests
+- **Typing Test** — Timed (15/30/60/120s) or word count (10/25/50/100) modes with common words, quotes, or programming keywords
+- **Analytics Dashboard** — Keyboard heatmap, bigram/trigram tables, finger/hand/row stats, error patterns, trend charts
+- **Practice Drills** — Auto-generated exercises targeting your weakest bigrams and slowest fingers
+- **Session History** — Track progress over time with export/import support
 
-This experiment tests ONLY the core mechanic: can we (1) accurately identify a user's slowest bigrams from keystroke timing, (2) generate readable practice text that oversamples those bigrams, and (3) demonstrate measurable improvement on those specific bigrams within one 10-minute session?
+## Tech Stack
 
-We are NOT testing retention, long-term improvement, or the full 2-week protocol. We're testing whether the adaptive targeting loop works at all.
-
-## How It Works
-
-1. **Calibration Phase (Phase 1):** User types 3 passages of standard English text. Keystroke-level timing captures every key-down event and computes bigram transition times.
-2. **Analysis:** The system ranks all observed bigrams by median transition time and selects the 20 slowest.
-3. **Training Phase (Phase 2):** The system generates 5 passages that oversample the user's slowest bigrams. NO speed metrics are shown during typing — only a progress bar.
-4. **Retest Phase (Phase 3):** User types 3 more standard passages (same difficulty as Phase 1 but different text). Bigram times are re-measured.
-5. **Results:** A before/after comparison of the 20 targeted bigrams is displayed, along with overall WPM.
+- SvelteKit (Svelte 5 with runes)
+- TypeScript
+- Tailwind CSS v4 (Tokyonight dark theme)
+- Chart.js (trend lines)
+- Static SPA (`@sveltejs/adapter-static`)
+- localStorage for persistence
 
 ## Setup
 
 ```bash
-# No build step needed. Just serve the HTML file:
-python -m http.server 8000
-# Then open http://localhost:8000/index.html in your browser
+npm install
+npm run dev
 ```
 
-## Data Collection
+Open http://localhost:5173 in your browser.
 
-All data stays in the browser (localStorage). At the end of a session, the user can optionally copy a JSON blob of anonymized results to clipboard for aggregation.
+## Build
+
+```bash
+npm run build
+npm run preview
+```
+
+Static output goes to `build/`.
+
+## Project Structure
+
+```
+src/
+├── lib/
+│   ├── config/       # Keyboard layout mappings (key→finger/hand/row)
+│   ├── types/        # TypeScript interfaces
+│   ├── engine/       # Pure TS: typing engine, bigram/trigram analysis, WPM, text generation
+│   ├── services/     # localStorage persistence, quote fetching
+│   ├── stores/       # Svelte 5 rune-based state (test, analytics, history, settings)
+│   └── components/   # UI: typing/, analytics/, practice/, layout/, shared/
+├── routes/
+│   ├── +page.svelte           # Typing test
+│   ├── analytics/+page.svelte # Analytics dashboard
+│   ├── practice/+page.svelte  # Practice drills
+│   └── history/+page.svelte   # Session history
+└── static/data/               # Bundled word lists, quotes, programming keywords
+```
 
 ## Architecture
 
-Single HTML file with embedded CSS and JavaScript. No dependencies, no server, no frameworks. Keystroke timing uses `performance.now()` for sub-millisecond precision.
+- Raw keystrokes are the single source of truth — all analytics are derived from `Keystroke[]`
+- The typing engine (`lib/engine/`) is pure TypeScript with zero Svelte imports, making it unit-testable
+- Keyboard heatmap uses HTML/CSS divs (not Canvas/SVG)
+- Chart.js is used only for line/bar charts (trends, finger stats)
+- Quotes use stale-while-revalidate: cached in localStorage, refreshed in background
+- Raw keystroke data is capped at 50 sessions; older sessions keep summaries only
